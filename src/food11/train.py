@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 import time
 from pathlib import Path
 
@@ -28,6 +29,14 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from torchvision.models import ResNet18_Weights, resnet18
+
+# mlflow prints a "\U0001f3c3 View run ..." line when a run ends. The default
+# Windows console encoding is cp1252, which cannot encode that emoji, and the
+# resulting UnicodeEncodeError escapes from mlflow.end_run() and leaves the run
+# stuck in RUNNING. Widening stdout once here keeps the run closing cleanly.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 TRACKING_URI = "http://127.0.0.1:5000"
 EXPERIMENT = "food11"
