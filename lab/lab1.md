@@ -114,9 +114,9 @@ Yes, `data.dvc` in the repo root. It is a small YAML pointer:
 
 ```yaml
 outs:
-- md5: 6d579579ddc27227e469af76c544b4d9.dir
-  size: 48
-  nfiles: 6
+- md5: a3a457d03c51ff8b037a833440f6ad13.dir
+  size: 1188442712
+  nfiles: 16643
   hash: md5
   path: data
 ```
@@ -129,10 +129,26 @@ The `.dir` object itself lives in the cache / remote and is a JSON array mapping
 every file to its own md5:
 
 ```json
-[{"md5": "0e19480810e983b5125c2a258f70f613", "relpath": "food11_raw/training/0_0.jpg"}, ...]
+[{"md5": "835878c085ad8f08ea6cdd959fe67463", "relpath": "food11_raw/evaluation/0_0.jpg"},
+ {"md5": "0b2cc3493d8f057449223ce5cd036b71", "relpath": "food11_raw/evaluation/0_1.jpg"}, ...]
 ```
 
-That indirection is what lets one ~200 byte pointer in git represent a dataset of any size.
+That indirection is what lets one ~120 byte pointer in git represent 1.2 GB of images.
+
+After `data.py` ran and the processed datasets were added, the same file became:
+
+```yaml
+outs:
+- md5: 311eb5c8da889ca29c6cd6ffb2e2a4c7.dir
+  size: 1316401637
+  nfiles: 36578
+  hash: md5
+  path: data
+```
+
+Same four lines, a different directory hash - 36578 files instead of 16643, because
+`food11_processed` and `food11_processed_mini` now sit beside `food11_raw`. That one
+changed hash is the entire diff git sees for a 128 MB change on disk.
 
 ## Question 6 - What is on the GitHub main branch, and what is on the dvc remote?
 
@@ -159,15 +175,27 @@ On the dvc remote you see the mirror image: no source code, just the
 content-addressed cache, one file per md5:
 
 ```
-dvcstore/files/md5/6d/579579ddc27227e469af76c544b4d9.dir
-dvcstore/files/md5/0e/19480810e983b5125c2a258f70f613
-dvcstore/files/md5/4d/14cbf073e964b00faa179b3dc0e0ae
+dvcstore/files/md5/a3/a457d03c51ff8b037a833440f6ad13.dir
+dvcstore/files/md5/00/009cbd0012549df615ac915fbec3ba
+dvcstore/files/md5/00/0246d03ce4222d0ed8aebe0a087c2c
+dvcstore/files/md5/00/02ae8b30b5199ef73aacfe6cb93877
 ...
 ```
 
-The file names are hashes, not `0_0.jpg`, which is why deduplication works: two
-identical images anywhere in the project are stored once. On DagsHub the "Data" tab
-does the reverse mapping for you and shows the human-readable tree.
+The file names are hashes, not `0_0.jpg`, and the first two characters become the
+directory, which is what keeps any single folder from holding tens of thousands of
+entries.
+
+Storing by hash also deduplicates. Pushing the raw dataset reported:
+
+```
+16021 files pushed
+```
+
+for a folder holding **16643** images - about 620 of them are byte-identical
+duplicates somewhere in Food-11, so they are stored once and simply referenced twice
+in the `.dir` listing. On DagsHub the "Data" tab does the reverse mapping for you and
+shows the human-readable tree instead of the hash names.
 
 ## Question 7 - Clone the repo in a fresh folder. Is the data folder there? What command brings it back?
 
@@ -208,13 +236,13 @@ The commits touching the pointer:
 
 ```bash
 $ git log --oneline -- data.dvc
-d1e8691 Add food11_processed and food11_processed_mini
-ec3e5b4 Track data folder with dvc
+964e0b3 Add food11_processed and food11_processed_mini
+5b5d356 Track data folder with dvc
 ```
 
 Two steps, and the order matters:
 
-1. `git checkout ec3e5b4` alone - the folders are **still on disk**. Git rewound
+1. `git checkout 5b5d356` alone - the folders are **still on disk**. Git rewound
    `data.dvc`, but git does not manage `data/` at all, so the workspace is now out of
    sync with the pointer. `dvc status` reports `modified: data`.
 2. `dvc checkout` - **now the two processed folders are gone**, only
