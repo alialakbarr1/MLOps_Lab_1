@@ -206,7 +206,15 @@ def main() -> None:
         mlflow.log_metric("training_seconds", time.perf_counter() - started)
         print(f"final test_accuracy={test_accuracy:.4f}")
 
-        mlflow.pytorch.log_model(model, "model")
+        # mlflow 3 defaults to the 'pt2' traced-graph format, which refuses to
+        # save without a concrete example to trace model.forward with. One real
+        # batch element doubles as the logged input example and signature.
+        example_images, _ = next(iter(test_loader))
+        mlflow.pytorch.log_model(
+            model,
+            "model",
+            input_example=example_images[:1].cpu().numpy(),
+        )
         print(f"run_id={mlflow.active_run().info.run_id}")
 
 
