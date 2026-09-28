@@ -8,7 +8,11 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "mlflow>=3.16.1",
     "pillow>=12.3.0",
+    "scikit-learn>=1.9.1",
+    "torch>=2.14.0",
+    "torchvision>=0.29.0",
 ]
 
 [project.scripts]
@@ -17,3 +21,14 @@ mlops = "mlops:main"
 [build-system]
 requires = ["uv_build>=0.12.13,<0.13.0"]
 build-backend = "uv_build"
+
+# This machine has no NVIDIA GPU, so pull the CPU-only torch wheels instead of
+# the default CUDA builds (multi-GB download we would never use).
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+torchvision = { index = "pytorch-cpu" }
