@@ -1,0 +1,26 @@
+# Deliberately naive single-stage build, kept only to measure against the
+# multi-stage Dockerfile for lab 3 Question 5. Do not deploy this one.
+#
+# What makes it naive:
+#   - full python:3.13 base (with gcc, git, headers) instead of slim
+#   - uv installed into the final image and left there
+#   - the whole build context copied in before dependencies are resolved, so any
+#     source edit invalidates the dependency layer
+#   - build caches kept in the image
+
+FROM python:3.13
+
+RUN pip install uv
+
+WORKDIR /app
+
+COPY . .
+
+RUN uv sync --frozen --no-dev
+
+ENV PATH="/app/.venv/bin:$PATH" \
+    MLFLOW_TRACKING_URI=http://host.docker.internal:5000
+
+EXPOSE 8000
+
+ENTRYPOINT ["uvicorn", "src.food11.serve:app", "--host", "0.0.0.0", "--port", "8000"]

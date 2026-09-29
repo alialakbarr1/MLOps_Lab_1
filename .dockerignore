@@ -1,0 +1,37 @@
+# Everything here stays out of the build context sent to the Docker daemon.
+
+# Host virtualenv: Linux-incompatible binaries and absolute host paths baked in.
+.venv/
+
+# DVC-tracked data (~1.3 GB) - the image serves a model, it does not train.
+data/
+data_local/
+.dvc/cache/
+.dvc/tmp/
+
+# mlflow run outputs - the model is fetched from the registry at runtime.
+mlruns/
+mlflow.db
+
+# Version control and tooling
+.git/
+.gitignore
+.dockerignore
+
+# Python bytecode and caches
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Lab write-ups, not needed to run the service.
+# NOTE: README.md is deliberately NOT excluded. pyproject.toml declares
+# readme = "README.md", so `uv sync` fails to build the project without it:
+#   error: Failed to build `mlops @ file:///app`
+#     cause: failed to open file `/app/README.md`
+lab/
+
+# Docker files themselves
+Dockerfile*
