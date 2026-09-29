@@ -1,6 +1,6 @@
 # Lab 2 - Model training and experiment tracking with MLflow
 
-**Repo:** https://github.com/alialakbarr1/MLOps
+**Repo:** https://github.com/alialakbarr1/MLOps-Lab-1
 **Tracking server:** `http://127.0.0.1:5000`, backend `sqlite:///mlflow.db`, artifacts `./mlruns`
 **Experiment:** `food11` (experiment_id `1`)
 

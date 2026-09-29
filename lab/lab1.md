@@ -1,6 +1,6 @@
 # Lab 1 - git/dvc and data preparation
 
-**Repo:** https://github.com/alialakbarr1/MLOps
+**Repo:** https://github.com/alialakbarr1/MLOps-Lab-1
 
 ## Solution adopted for the data remote
 

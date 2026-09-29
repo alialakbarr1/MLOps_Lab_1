@@ -1,6 +1,6 @@
 # Lab 3 - Containerizing the model with Docker
 
-**Repo:** https://github.com/alialakbarr1/MLOps
+**Repo:** https://github.com/alialakbarr1/MLOps-Lab-1
 **Registered model:** `food11`, alias `champion` → **v2**
 **Image:** `food11-api:latest` (multi-stage), `food11-api:naive` (single-stage, for comparison only)
 
