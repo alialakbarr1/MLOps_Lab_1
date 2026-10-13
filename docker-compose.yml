@@ -1,0 +1,57 @@
+services:
+  mlflow:
+    build: ./mlflow
+    ports:
+      # Published only because a human opens the UI at 127.0.0.1:5000.
+      - "5000:5000"
+    volumes:
+      # Named volume: the sqlite db and artifacts outlive `docker compose down`.
+      - mlflow-data:/mlflow-data
+    healthcheck:
+      # python:3.11-slim has no curl, so probe with the interpreter.
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:5000/health').read()"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  inference:
+    build: .
+    environment:
+      # Compose's embedded DNS resolves the service name on the project network.
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    depends_on:
+      mlflow:
+        # Plain `depends_on: [mlflow]` waits only for the container to START, not
+        # for the server inside it to accept connections. serve.py resolves
+        # models:/food11@champion during startup, so if mlflow is not answering
+        # yet the container dies with "Application startup failed" / exit 3 and
+        # Compose does not retry it. service_healthy waits for the probe above.
+        condition: service_healthy
+    # Still worth having: the healthcheck closes the startup race, but mlflow can
+    # also go away later, and a dead inference container should come back.
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      # Importing torch and downloading the model takes ~35s on this machine.
+      start_period: 120s
+    # No `ports:` - nothing outside the Compose network talks to it directly.
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8501:8501"
+    environment:
+      INFERENCE_URL: http://inference:8000
+    depends_on:
+      inference:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  mlflow-data:

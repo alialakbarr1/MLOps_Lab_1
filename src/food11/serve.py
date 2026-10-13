@@ -51,12 +51,29 @@ STD = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
 state: dict[str, object] = {}
 
 
+def resolve_version(uri: str) -> str | None:
+    """Turn 'models:/food11@champion' into the concrete version it points at.
+
+    The alias is resolved once, at load time, so this records which version is
+    actually in memory - the alias may be reassigned later without this process
+    noticing. Best effort: a failure here must not stop the service starting.
+    """
+    if not uri.startswith("models:/") or "@" not in uri:
+        return None
+    name, _, alias = uri.removeprefix("models:/").partition("@")
+    try:
+        return mlflow.MlflowClient().get_model_version_by_alias(name, alias).version
+    except Exception:  # noqa: BLE001 - informational only
+        return None
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load the model once, at startup, instead of per request."""
     mlflow.set_tracking_uri(TRACKING_URI)
     state["model"] = mlflow.pyfunc.load_model(MODEL_URI)
     state["model_uri"] = MODEL_URI
+    state["loaded_version"] = resolve_version(MODEL_URI)
     yield
     state.clear()
 
@@ -90,8 +107,17 @@ def health() -> dict[str, str]:
 
 @app.get("/model")
 def model_info() -> dict[str, object]:
-    """Which model this container actually resolved, useful after a promotion."""
-    return {"model_uri": state.get("model_uri"), "tracking_uri": TRACKING_URI}
+    """Which model this container actually resolved, useful after a promotion.
+
+    `loaded_version` is the version held in memory since startup. If the alias
+    has been moved since, this still reports the old one - which is the point:
+    it makes a stale replica visible instead of silently serving old weights.
+    """
+    return {
+        "model_uri": state.get("model_uri"),
+        "loaded_version": state.get("loaded_version"),
+        "tracking_uri": TRACKING_URI,
+    }
 
 
 @app.post("/predict")
